@@ -24,6 +24,7 @@ from .services import (
     Services,
     StateEncoder,
     SwitchState,
+    kelvin_to_mired,
 )
 
 
@@ -63,7 +64,7 @@ class MqttHandler:
                     state = LightState(  #! FOR SOME REASON BRIGHTNESS IS NOT SET ON FIRST STATE AFTER RESTART OF HASS UI CAN SHOW LIGHT ON STATE CAN BE "ON" BUT BRIGHTNESS IS NOT SET SO FIRST STATE SENT TO KNOB IS OFF BRIGHTNESS 0
                         new_state.state == "on" or None,
                         new_state.attributes.get("brightness") or None,
-                        new_state.attributes.get("color_temp") or None,
+                        kelvin_to_mired(new_state.attributes.get("color_temp_kelvin")),
                         new_state.attributes.get("rgb_color") or None,
                     )
                 elif app["app_slug"] == "blinds":

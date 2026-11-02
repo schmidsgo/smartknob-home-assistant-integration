@@ -8,6 +8,18 @@ from homeassistant.core import HomeAssistant
 from .logger import _LOGGER
 
 
+def mired_to_kelvin(mired: int) -> int:
+    """Convert a color temperature in mireds to Kelvin."""
+    return round(1000000 / mired)
+
+
+def kelvin_to_mired(kelvin: int | None) -> int | None:
+    """Convert a color temperature in Kelvin to mireds, the unit the knob uses."""
+    if not kelvin:
+        return None
+    return round(1000000 / kelvin)
+
+
 class SwitchState:
     """Defines the structure of the SwitchState object."""
 
@@ -112,46 +124,21 @@ class Services:
 
     async def async_set_light(self, entity_id: str, state: LightState):
         """Switch the light on or off, and set its brightness and color."""
-        if state.rgb_color and state.brightness >= 0 and state.brightness <= 255:
-            await self.hass.async_create_task(
-                self.hass.services.async_call(
-                    "light",
-                    "turn_on",
-                    {
-                        "entity_id": entity_id,
-                        "brightness": state.brightness,
-                        "rgb_color": state.rgb_color,
-                    },
-                    True,
-                )
-            )
-        elif state.color_temp and state.brightness >= 0 and state.brightness <= 255:
-            await self.hass.async_create_task(
-                self.hass.services.async_call(
-                    "light",
-                    "turn_on",
-                    {
-                        "entity_id": entity_id,
-                        "brightness": state.brightness,
-                        "color_temp": state.color_temp,
-                    },
-                    True,
-                )
-            )
-        elif state.brightness >= 0 and state.brightness <= 255:
-            await self.hass.async_create_task(
-                self.hass.services.async_call(
-                    "light",
-                    "turn_on",
-                    {
-                        "entity_id": entity_id,
-                        "brightness": state.brightness,
-                    },
-                    True,
-                )
-            )
-        else:
-            _LOGGER.error("Not implemented")
+        if state.brightness is None or not 0 <= state.brightness <= 255:
+            _LOGGER.error("Invalid brightness from knob: %s", state.brightness)
+            return
+
+        data = {"entity_id": entity_id, "brightness": state.brightness}
+        if state.rgb_color:
+            data["rgb_color"] = state.rgb_color
+        elif state.color_temp:
+            # The knob speaks mireds; Home Assistant only accepts Kelvin since the
+            # color_temp (mired) service field was removed.
+            data["color_temp_kelvin"] = mired_to_kelvin(state.color_temp)
+
+        await self.hass.async_create_task(
+            self.hass.services.async_call("light", "turn_on", data, True)
+        )
 
     async def async_handle_blinds(self, entity_id: str, position: int):
         """Handle blinds entity."""
