@@ -30,9 +30,9 @@ The hardware is inspired by <a href="https://github.com/scottbez1/smartknob">sco
 
 Easiest install is via [HACS](https://hacs.xyz/):
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=SeedLabs-it&repository=smartknob-home-assistant-integration&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=schmidsgo&repository=smartknob-home-assistant-integration&category=integration)
 
-`HACS -> Integrations -> Three dots in the top right corner -> Custom repositories -> Add: `
+`HACS -> Integrations -> Three dots in the top right corner -> Custom repositories -> Add: https://github.com/schmidsgo/smartknob-home-assistant-integration (type: Integration)`
 
 Notes:
 
