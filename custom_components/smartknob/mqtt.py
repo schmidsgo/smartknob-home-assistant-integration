@@ -129,14 +129,21 @@ class MqttHandler:
             coordinator: SmartknobCoordinator = self.hass.data[DOMAIN]["coordinator"]
             knobs = coordinator.store.knobs
             for mac_address in knobs:
-                _LOGGER.debug(mac_address)
-                topic = f"smartknob/{mac_address}/from_knob"
-                await mqtt.async_subscribe(
-                    self.hass, topic, self.async_message_received
-                )
+                await self._async_subscribe_to_knob(mac_address)
 
         except Exception as _:
             _LOGGER.error("Couldnt subscribe to knob topics")
+
+    async def _async_subscribe_to_knob(self, mac_address):
+        """Subscribe to a single knob's topic, once."""
+        topic = f"smartknob/{mac_address}/from_knob"
+        if topic in self._subscribed_topics:
+            return
+        _LOGGER.debug(mac_address)
+        self._subscriptions.append(
+            await mqtt.async_subscribe(self.hass, topic, self.async_message_received)
+        )
+        self._subscribed_topics.append(topic)
 
     async def async_init_received(self, msg):
         """Handle init message from SmartKnob."""
@@ -171,6 +178,10 @@ class MqttHandler:
                     await coordinator.store.async_init_knob(
                         {"mac_address": mac_address, "device_id": device.id, "apps": []}
                     )
+
+                    # Knob topics are otherwise only subscribed at startup, so a knob added
+                    # while HA is running could not control anything until HA was restarted.
+                    await self._async_subscribe_to_knob(mac_address)
 
                     async_track_device_registry_updated_event(
                         self.hass,

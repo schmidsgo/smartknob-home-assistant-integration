@@ -92,16 +92,19 @@ class Services:
 
     async def async_toggle_switch(self, entity_id: str, state: SwitchState):
         """Switch the entity on or off."""
+        # Use the entity's own domain: the light_switch app controls light.* entities,
+        # which reject switch.turn_on.
+        domain = entity_id.split(".", 1)[0]
         if state.on:
             await self.hass.async_create_task(
                 self.hass.services.async_call(
-                    "switch", "turn_on", {"entity_id": entity_id}
+                    domain, "turn_on", {"entity_id": entity_id}
                 )
             )
         elif not state.on:
             await self.hass.async_create_task(
                 self.hass.services.async_call(
-                    "switch", "turn_off", {"entity_id": entity_id}
+                    domain, "turn_off", {"entity_id": entity_id}
                 )
             )
         else:
