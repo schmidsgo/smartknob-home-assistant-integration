@@ -28,6 +28,7 @@ export interface App {
   app_slug: string;
   entity_id: string;
   friendly_name: string;
+  icon?: string;
 }
 
 export interface AppListItem {

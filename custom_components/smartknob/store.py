@@ -32,6 +32,8 @@ class AppEntry:
     app_slug = attr.ib(type=str, default=None)
     entity_id = attr.ib(type=str, default=None)
     friendly_name = attr.ib(type=str, default=None)
+    # "mdi:..." chosen in the panel; "" uses the entity's own icon.
+    icon = attr.ib(type=str, default="")
 
 
 @attr.s(slots=True, frozen=True)
@@ -111,6 +113,7 @@ class SmartknobStorage:
                         app_slug=app["app_slug"],
                         entity_id=app["entity_id"],
                         friendly_name=app["friendly_name"],
+                        icon=app.get("icon") or "",
                     )
                     for (app) in knob["apps"]
                 ]

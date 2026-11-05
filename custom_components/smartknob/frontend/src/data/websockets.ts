@@ -26,6 +26,7 @@ export const asyncSaveApp = async (
         app_slug: app.app_slug,
         entity_id: app.entity_id,
         friendly_name: app.friendly_name,
+        icon: app.icon ?? '',
       },
     ],
   });
@@ -43,6 +44,7 @@ export const asyncSaveApps = async (
       app_slug: app.app_slug,
       entity_id: app.entity_id,
       friendly_name: app.friendly_name,
+      icon: app.icon ?? '',
     })),
   });
 };
