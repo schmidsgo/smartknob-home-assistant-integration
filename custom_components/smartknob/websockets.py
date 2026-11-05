@@ -86,6 +86,7 @@ class SmartknobAppsView(HomeAssistantView):
                         vol.Required("app_slug"): str,
                         vol.Required("entity_id"): str,
                         vol.Required("friendly_name"): str,
+                        vol.Optional("icon", default=""): vol.Any(str, None),
                     }
                 ],
             }
@@ -117,6 +118,7 @@ class SmartknobAppsView(HomeAssistantView):
                         vol.Required("app_slug"): str,
                         vol.Required("entity_id"): str,
                         vol.Required("friendly_name"): str,
+                        vol.Optional("icon", default=""): vol.Any(str, None),
                     }
                 ],
             }

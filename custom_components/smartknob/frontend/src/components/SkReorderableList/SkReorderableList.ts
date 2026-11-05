@@ -126,10 +126,54 @@ export class SkReorderableList extends withTwind(LitElement) {
                 class="w-full"
               ></ha-selector>
             </div>
+            <div class="flex md:flex-row flex-col flex-nowrap gap-2 w-full pt-2">
+              <ha-selector
+                .hass=${this.hass}
+                .selector=${{ text: {} }}
+                .label=${'Anzeigename'}
+                .value=${item.app.friendly_name}
+                class="w-full"
+                @value-changed=${(e: CustomEvent) => {
+                  item.app.friendly_name = e.detail.value ?? '';
+                  this.saveSoon();
+                }}
+              ></ha-selector>
+              <ha-selector
+                .hass=${this.hass}
+                .selector=${{
+                  icon: {
+                    placeholder:
+                      item.entity?.attributes.icon ?? 'Icon der Entität',
+                  },
+                }}
+                .label=${'Icon'}
+                .value=${item.app.icon ?? ''}
+                class="w-full"
+                @value-changed=${(e: CustomEvent) => {
+                  item.app.icon = e.detail.value ?? '';
+                  this.saveSoon();
+                }}
+              ></ha-selector>
+            </div>
           </sk-reorderable-list-item>`,
         );
       })}
     `;
+  }
+
+  private _saveTimer?: number;
+
+  // Typing a name fires on every key; save once the user pauses, so the knob
+  // isn't re-synced for each letter.
+  saveSoon() {
+    window.clearTimeout(this._saveTimer);
+    this._saveTimer = window.setTimeout(() => {
+      asyncSaveApps(
+        this.hass,
+        this.mac_address,
+        this.apps.map((item) => item.app),
+      );
+    }, 800);
   }
 
   drop(e: any) {

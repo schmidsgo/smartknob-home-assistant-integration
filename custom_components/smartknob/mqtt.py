@@ -13,6 +13,7 @@ from homeassistant.helpers.event import (
     async_track_device_registry_updated_event,
 )
 
+from .app_icons import async_app_icon_url
 from .const import DOMAIN, TOPIC_INIT
 from .coordinator import SmartknobCoordinator
 from .cover_art import async_cover_url
@@ -313,10 +314,17 @@ class MqttHandler:
         _LOGGER.debug(knob)
         if knob is not None:
             _LOGGER.debug("KNOB FOUND")
+            apps = []
+            for app in knob["apps"]:
+                app = dict(app)
+                app["icon_url"] = await async_app_icon_url(self.hass, app)
+                # The knob only needs the URL; keep the message small for its MQTT buffer.
+                app.pop("icon", None)
+                apps.append(app)
             await mqtt.async_publish(
                 self.hass,
                 "smartknob/" + knob["mac_address"] + "/from_hass",
-                json.dumps({"type": "sync", "apps": knob["apps"]}),
+                json.dumps({"type": "sync", "apps": apps}, separators=(",", ":")),
             )
         else:
             _LOGGER.debug("KNOB NOT FOUND")
