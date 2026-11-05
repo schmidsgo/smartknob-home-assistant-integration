@@ -71,9 +71,23 @@ class SmartknobCoordinator(DataUpdateCoordinator):
                 if app["entity_id"] not in entity_ids:
                     entity_ids.append(app["entity_id"])
 
+        # Media players change on their own all the time (next track, volume set in the
+        # Sonos/Spotify app), so their updates must reach the knob even without a user.
+        always_forward_ids = {
+            app["entity_id"]
+            for knob in knobs
+            for app in knob["apps"]
+            if app["app_slug"] == "media_player"
+        }
+
         async def async_state_change_callback(event: Event[EventStateChangedData]):
             """Handle entity state changes."""
-            if event is None or event.data["new_state"].context.user_id is None:
+            if event is None or event.data["new_state"] is None:
+                return
+            if (
+                event.data["new_state"].context.user_id is None
+                and event.data["entity_id"] not in always_forward_ids
+            ):
                 return
 
             affected_knob_apps = [

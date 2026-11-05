@@ -37,6 +37,9 @@ DOMAIN_BLINDS = "cover"
 SPOTIFY = "spotify"
 DOMAIN_SPOTIFY = "media_player"
 
+MEDIA_PLAYER = "media_player"
+DOMAIN_MEDIA_PLAYER = "media_player"
+
 
 APP_SLUGS = [
     {
@@ -61,6 +64,12 @@ APP_SLUGS = [
         "slug": SPOTIFY,
         "friendly_name": "Spotify",
         "domain": DOMAIN_SPOTIFY,
+        "supported_features": 1,
+    },
+    {
+        "slug": MEDIA_PLAYER,
+        "friendly_name": "Media Player",
+        "domain": DOMAIN_MEDIA_PLAYER,
         "supported_features": 1,
     },
     {
