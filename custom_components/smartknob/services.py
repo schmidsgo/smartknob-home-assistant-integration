@@ -3,7 +3,7 @@
 from enum import Enum
 import json
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, State
 
 from .logger import _LOGGER
 
@@ -85,6 +85,89 @@ class MediaState:
         self.playing = state["playing"]
         self.previous = state["previous"]
         self.next = state["next"]
+
+
+# The knob's text font only has Latin-1; map common typographic characters to it.
+_KNOB_TEXT_REPLACEMENTS = str.maketrans(
+    {"\u2013": "-", "\u2014": "-", "\u2018": "'", "\u201c": '"', "\u201d": '"', "\u2026": "..."}
+)
+
+
+def _truncate_utf8(text: str | None, max_bytes: int) -> str:
+    """Shorten text to max_bytes of UTF-8 without cutting a character in half."""
+    if not text:
+        return ""
+    text = str(text).translate(_KNOB_TEXT_REPLACEMENTS)
+    encoded = text.encode("utf-8")
+    if len(encoded) <= max_bytes:
+        return text
+    return encoded[:max_bytes].decode("utf-8", errors="ignore").rstrip() + "..."
+
+
+class MediaPlayerState:
+    """State of a media_player entity as the knob's media player app shows it.
+
+    The knob copies the whole state into a 256 byte buffer, so title and artist
+    are shortened to keep the JSON well below that.
+    """
+
+    TITLE_MAX_BYTES = 64
+    ARTIST_MAX_BYTES = 40
+
+    def __init__(
+        self,
+        state: str,
+        volume: int | None,
+        muted: bool,
+        title: str | None,
+        artist: str | None,
+    ) -> None:
+        """Initialize the MediaPlayerState object."""
+        self.state: str = state
+        self.volume: int | None = volume
+        self.muted: bool = muted
+        self.title: str = _truncate_utf8(title, self.TITLE_MAX_BYTES)
+        self.artist: str = _truncate_utf8(artist, self.ARTIST_MAX_BYTES)
+
+    @classmethod
+    def from_hass(cls, state: State) -> "MediaPlayerState":
+        """Build the knob state from a Home Assistant media_player state."""
+        attributes = state.attributes
+        volume_level = attributes.get("volume_level")
+        volume = round(volume_level * 100) if volume_level is not None else None
+        artist = attributes.get("media_artist") or attributes.get("media_album_artist")
+        title = attributes.get("media_title") or attributes.get("media_channel")
+        return cls(
+            state.state,
+            volume,
+            bool(attributes.get("is_volume_muted")),
+            title,
+            artist,
+        )
+
+    def as_dict(self) -> dict:
+        """Return the JSON-serialisable form sent to the knob."""
+        data = {
+            "state": self.state,
+            "muted": self.muted,
+            "title": self.title,
+            "artist": self.artist,
+        }
+        if self.volume is not None:
+            data["volume"] = self.volume
+        return data
+
+
+# Actions the knob's media player app can send, mapped to media_player services.
+MEDIA_PLAYER_ACTIONS = {
+    "play": "media_play",
+    "pause": "media_pause",
+    "play_pause": "media_play_pause",
+    "next": "media_next_track",
+    "previous": "media_previous_track",
+    "mute": "volume_mute",
+    "unmute": "volume_mute",
+}
 
 
 class LockState:
@@ -179,6 +262,40 @@ class Services:
         )
 
 
+    async def async_handle_media_player(self, entity_id: str, state: dict):
+        """Handle a volume change or a button action from the media player app."""
+        if state.get("volume") is not None:
+            try:
+                volume = min(max(float(state["volume"]), 0), 100)
+            except (TypeError, ValueError):
+                _LOGGER.error("Invalid volume from knob: %s", state.get("volume"))
+                return
+            await self.hass.services.async_call(
+                "media_player",
+                "volume_set",
+                {"entity_id": entity_id, "volume_level": round(volume / 100, 2)},
+            )
+
+        action = state.get("action")
+        if action is None:
+            return
+        service = MEDIA_PLAYER_ACTIONS.get(action)
+        if service is None:
+            _LOGGER.error("Unknown media player action from knob: %s", action)
+            return
+
+        data = {"entity_id": entity_id}
+        if service == "volume_mute":
+            data["is_volume_muted"] = action == "mute"
+        elif action == "play":
+            current = self.hass.states.get(entity_id)
+            if current is not None and current.state == "off":
+                # A switched off player ignores media_play, wake it up instead.
+                service = "turn_on"
+
+        await self.hass.services.async_call("media_player", service, data)
+
+
 class StateEncoder(json.JSONEncoder):
     """Custom JSON encoder for the state objects."""
 
@@ -199,6 +316,8 @@ class StateEncoder(json.JSONEncoder):
             return {
                 "position": o.position,
             }
+        if isinstance(o, MediaPlayerState):
+            return o.as_dict()
         if isinstance(o, ClimateState):
             return {
                 "mode": o.mode,

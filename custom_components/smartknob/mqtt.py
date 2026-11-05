@@ -21,6 +21,7 @@ from .services import (
     ClimateMode,
     ClimateState,
     LightState,
+    MediaPlayerState,
     Services,
     StateEncoder,
     SwitchState,
@@ -71,6 +72,18 @@ class MqttHandler:
                     state = BlindsState(
                         new_state.attributes.get("current_position") or 0
                     )
+                elif app["app_slug"] == "media_player":
+                    if new_state is None:
+                        continue
+                    state = MediaPlayerState.from_hass(new_state)
+                    # Players report position updates and other attributes the knob
+                    # doesn't show; only send what changes the display.
+                    if (
+                        old_state is not None
+                        and MediaPlayerState.from_hass(old_state).as_dict()
+                        == state.as_dict()
+                    ):
+                        continue
                 elif app["app_slug"] == "climate":
                     if new_state.state in ClimateMode.__members__:
                         mode = ClimateMode[new_state.state].value
@@ -258,6 +271,10 @@ class MqttHandler:
                         await self.services.async_handle_blinds(
                             app["entity_id"],
                             state.get("position"),
+                        )
+                    elif app["app_slug"] == "media_player":
+                        await self.services.async_handle_media_player(
+                            app["entity_id"], state
                         )
                     elif app["app_slug"] == "climate":
                         await self.services.async_handle_climate(
