@@ -53,16 +53,33 @@ def async_cover_url(hass: HomeAssistant, state: State) -> str:
     picture = state.attributes.get("entity_picture")
     if not picture or state.state in ("off", "unavailable", "unknown"):
         return ""
-    try:
-        base = get_url(hass, allow_external=False, allow_cloud=False)
-    except NoURLAvailableError:
-        _LOGGER.debug("No internal URL, the knob can't load covers")
+    base = _knob_base_url(hass)
+    if base is None:
+        _LOGGER.debug("No plain http URL, the knob can't load covers")
         return ""
     version = hashlib.sha1(picture.encode()).hexdigest()[:8]
     return (
         f"{base}{COVER_URL_PATH}/{state.entity_id}"
         f"?k={_data(hass)['key']}&v={version}"
     )
+
+
+def _knob_base_url(hass: HomeAssistant) -> str | None:
+    """Return an http:// address of Home Assistant that the knob can reach.
+
+    The knob can neither resolve mDNS names like homeassistant.local nor speak
+    https, so prefer the LAN IP Home Assistant listens on.
+    """
+    api = hass.config.api
+    if api is not None and not api.use_ssl and api.local_ip:
+        return f"http://{api.local_ip}:{api.port}"
+    try:
+        base = get_url(hass, allow_external=False, allow_cloud=False, require_ssl=False)
+    except NoURLAvailableError:
+        return None
+    if not base.startswith("http://") or ".local" in base:
+        return None
+    return base
 
 
 def _to_rgb565(image_bytes: bytes) -> bytes:
