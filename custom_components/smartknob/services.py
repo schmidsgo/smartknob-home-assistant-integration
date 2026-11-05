@@ -107,8 +107,9 @@ def _truncate_utf8(text: str | None, max_bytes: int) -> str:
 class MediaPlayerState:
     """State of a media_player entity as the knob's media player app shows it.
 
-    The knob copies the whole state into a 256 byte buffer, so title and artist
-    are shortened to keep the JSON well below that.
+    The knob copies the whole state into a 512 byte buffer (256 before firmware
+    with cover support), so title and artist are shortened to keep the JSON small.
+    cover is the URL the knob loads the album cover from, "" for none.
     """
 
     TITLE_MAX_BYTES = 64
@@ -121,6 +122,7 @@ class MediaPlayerState:
         muted: bool,
         title: str | None,
         artist: str | None,
+        cover: str = "",
     ) -> None:
         """Initialize the MediaPlayerState object."""
         self.state: str = state
@@ -128,9 +130,10 @@ class MediaPlayerState:
         self.muted: bool = muted
         self.title: str = _truncate_utf8(title, self.TITLE_MAX_BYTES)
         self.artist: str = _truncate_utf8(artist, self.ARTIST_MAX_BYTES)
+        self.cover: str = cover
 
     @classmethod
-    def from_hass(cls, state: State) -> "MediaPlayerState":
+    def from_hass(cls, state: State, cover: str = "") -> "MediaPlayerState":
         """Build the knob state from a Home Assistant media_player state."""
         attributes = state.attributes
         volume_level = attributes.get("volume_level")
@@ -143,6 +146,7 @@ class MediaPlayerState:
             bool(attributes.get("is_volume_muted")),
             title,
             artist,
+            cover,
         )
 
     def as_dict(self) -> dict:
@@ -152,6 +156,7 @@ class MediaPlayerState:
             "muted": self.muted,
             "title": self.title,
             "artist": self.artist,
+            "cover": self.cover,
         }
         if self.volume is not None:
             data["volume"] = self.volume

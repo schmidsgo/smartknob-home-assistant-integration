@@ -6,6 +6,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN
 from .coordinator import SmartknobCoordinator
+from .cover_art import async_register_cover_view
 from .logger import _LOGGER
 from .mqtt import MqttHandler
 from .panel import async_register_panel, async_unregister_panel
@@ -45,6 +46,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # Register Websockets
     await async_register_websockets(hass)
+    async_register_cover_view(hass)
 
     # Load Config Data
     await coordinator.store.async_load()

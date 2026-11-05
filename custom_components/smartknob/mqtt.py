@@ -15,6 +15,7 @@ from homeassistant.helpers.event import (
 
 from .const import DOMAIN, TOPIC_INIT
 from .coordinator import SmartknobCoordinator
+from .cover_art import async_cover_url
 from .logger import _LOGGER
 from .services import (
     BlindsState,
@@ -75,12 +76,16 @@ class MqttHandler:
                 elif app["app_slug"] == "media_player":
                     if new_state is None:
                         continue
-                    state = MediaPlayerState.from_hass(new_state)
+                    state = MediaPlayerState.from_hass(
+                        new_state, async_cover_url(self.hass, new_state)
+                    )
                     # Players report position updates and other attributes the knob
                     # doesn't show; only send what changes the display.
                     if (
                         old_state is not None
-                        and MediaPlayerState.from_hass(old_state).as_dict()
+                        and MediaPlayerState.from_hass(
+                            old_state, async_cover_url(self.hass, old_state)
+                        ).as_dict()
                         == state.as_dict()
                     ):
                         continue
